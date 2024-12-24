@@ -3,11 +3,13 @@ package hanlers
 import (
 	"github.com/gin-gonic/gin"
 	"gw-currency-wallet/internal/db"
+	"gw-currency-wallet/internal/domain"
+	"gw-currency-wallet/pkg/hash"
 	"net/http"
 )
 
 func CreateUserHandler(c *gin.Context) {
-	var user db.User
+	var user domain.SignUp
 
 	// Чтение JSON из тела запроса
 	if err := c.ShouldBindJSON(&user); err != nil {
@@ -15,16 +17,13 @@ func CreateUserHandler(c *gin.Context) {
 		return
 	}
 
-	// Проверка на существование пользователя
-	exists, err := db.CheckUserExists(user.Username, user.Email)
+	hashedPassword, err := hash.HashPassword(user.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check user existence"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
 		return
 	}
-	if exists {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Username or email already exists"})
-		return
-	}
+
+	user.Password = hashedPassword
 
 	if err := db.CreateUser(&user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось создать пользователя"})
