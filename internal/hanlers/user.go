@@ -2,14 +2,14 @@ package hanlers
 
 import (
 	"github.com/gin-gonic/gin"
-	"gw-currency-wallet/internal/db"
 	"gw-currency-wallet/internal/domain"
+	"gw-currency-wallet/internal/repository"
 	"gw-currency-wallet/pkg/hash"
 	"net/http"
 )
 
 func CreateUserHandler(c *gin.Context) {
-	var user domain.SignUp
+	var user domain.User
 
 	// Чтение JSON из тела запроса
 	if err := c.ShouldBindJSON(&user); err != nil {
@@ -25,7 +25,7 @@ func CreateUserHandler(c *gin.Context) {
 
 	user.Password = hashedPassword
 
-	if err := db.CreateUser(&user); err != nil {
+	if err := repository.CreateUser(&user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось создать пользователя"})
 		return
 	}

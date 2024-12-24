@@ -5,7 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"gw-currency-wallet/internal/hanlers"
-	"gw-currency-wallet/pkg/database"
+	"gw-currency-wallet/internal/repository"
 	"log"
 	"os"
 )
@@ -16,10 +16,10 @@ func init() {
 		log.Fatalf("Error loading .env file")
 	}
 	// Инициализация базы данных
-	database.InitDb()
+	repository.InitDb()
 
 	// Запуск миграций
-	database.RunMigrations()
+	repository.RunMigrations()
 }
 
 func main() {
