@@ -4,10 +4,8 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	"gw-currency-wallet/internal/hanlers"
 	"gw-currency-wallet/pkg/database"
-	"gw-currency-wallet/pkg/migrate"
 	"log"
 	"os"
 )
@@ -21,14 +19,15 @@ func init() {
 	database.InitDb()
 
 	// Запуск миграций
-	migrate.RunMigrations()
+	database.RunMigrations()
 }
 
 func main() {
 	router := gin.Default()
 	router.Use(cors.Default())
 
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	//router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	router.POST("/api/v1/register", hanlers.CreateUserHandler)
 
 	router.Run(os.Getenv("PORT"))
 }
