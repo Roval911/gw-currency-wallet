@@ -1,27 +1,15 @@
 package models
 
-import "time"
-
 type User struct {
-	ID       int    `json:"id"`
+	ID       uint   `json:"id"`
 	Username string `json:"username" binding:"required,min=3,gte=2"`
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,gte=6"`
-	//RefreshToken []RefreshToken `json:"refreshToken" db:"refreshToken"`
-}
-
-type RefreshToken struct {
-	ID        uint64
-	UserID    uint64
-	Token     string
-	DeviceID  string
-	CreatedAt time.Time
-	ExpiresAt time.Time
 }
 
 type Wallet struct {
-	ID       uint64  `json:"id"`
-	UserID   uint64  `json:"user_id"`
+	ID       uint    `json:"id"`
+	UserID   uint    `json:"user_id"`
 	Balance  float64 `json:"balance"`
 	Currency string  `json:"currency" `
 }
@@ -36,7 +24,7 @@ type RegisterRequest struct {
 // RegisterResponse представляет тело ответа при успешной регистрации
 type RegisterResponse struct {
 	Message string `json:"message"` // Сообщение об успешной регистрации
-	UserID  int    `json:"user_id"` // Идентификатор нового пользователя
+	UserID  uint   `json:"user_id"` // Идентификатор нового пользователя
 }
 
 // ErrorResponse ответ ошибки
