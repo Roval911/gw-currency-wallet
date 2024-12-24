@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gw-currency-wallet/internal/config"
 	"gw-currency-wallet/internal/hanlers"
+	"gw-currency-wallet/internal/middleware"
 	"gw-currency-wallet/internal/repository"
 	"log"
 	"os"
@@ -49,6 +50,13 @@ func main() {
 
 	//router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.POST("/api/v1/register", hanlers.CreateUserHandler)
+	router.POST("/api/v1/login", hanlers.Login)
+
+	protected := router.Group("/api/v1")
+	protected.Use(middleware.AuthMiddleware())
+	{
+
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
