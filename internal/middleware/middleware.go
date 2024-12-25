@@ -9,11 +9,12 @@ import (
 
 var jwtSecret = []byte("your_secret_key")
 
-func GenerateJWT(username string) (string, error) {
+func GenerateJWT(userID uint, username string) (string, error) {
 	claims := jwt.MapClaims{
+		"user_id":  userID,
 		"username": username,
-		"exp":      time.Now().Add(time.Hour * 24).Unix(), // Токен истекает через 24 часа
-		"iat":      time.Now().Unix(),                     // Время создания токена
+		"exp":      time.Now().Add(time.Hour * 24).Unix(),
+		"iat":      time.Now().Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(jwtSecret)
@@ -21,37 +22,43 @@ func GenerateJWT(username string) (string, error) {
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenString := c.GetHeader("Authorization")
-		if tokenString == "" {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is missing"})
 			c.Abort()
 			return
 		}
 
-		claims := jwt.MapClaims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			// Проверка метода подписи
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrSignatureInvalid
+		const bearerPrefix = "Bearer "
+		if len(authHeader) > len(bearerPrefix) && authHeader[:len(bearerPrefix)] == bearerPrefix {
+			tokenString := authHeader[len(bearerPrefix):]
+			claims := jwt.MapClaims{}
+			token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, jwt.ErrSignatureInvalid
+				}
+				return jwtSecret, nil
+			})
+
+			if err != nil || !token.Valid {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+				c.Abort()
+				return
 			}
-			return jwtSecret, nil
-		})
 
-		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			c.Abort()
+			if userID, ok := claims["user_id"].(float64); ok {
+				c.Set("user_id", uint(userID))
+			} else {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+				c.Abort()
+				return
+			}
+
+			c.Next()
 			return
 		}
 
-		// Извлечение user_id из токена
-		if userID, ok := claims["user_id"].(float64); ok {
-			c.Set("user_id", uint(userID))
-		} else {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
-			c.Abort()
-			return
-		}
-
-		c.Next()
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization header format"})
+		c.Abort()
 	}
 }

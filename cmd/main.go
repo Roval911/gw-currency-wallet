@@ -55,7 +55,7 @@ func main() {
 	protected := router.Group("/api/v1")
 	protected.Use(middleware.AuthMiddleware())
 	{
-
+		protected.POST("/createwallet", hanlers.CreateWalletHandle)
 	}
 
 	port := os.Getenv("PORT")
