@@ -3,14 +3,13 @@ package hanlers
 import (
 	"github.com/gin-gonic/gin"
 	"gw-currency-wallet/internal/middleware"
-	"gw-currency-wallet/internal/models"
-	"gw-currency-wallet/internal/repository"
+	"gw-currency-wallet/internal/storages"
 	"gw-currency-wallet/pkg/hash"
 	"net/http"
 )
 
-func CreateUserHandler(c *gin.Context) {
-	var user models.User
+func (h *AuthHandler) CreateUserHandler(c *gin.Context) {
+	var user storages.User
 
 	// Чтение JSON из тела запроса
 	if err := c.ShouldBindJSON(&user); err != nil {
@@ -26,7 +25,7 @@ func CreateUserHandler(c *gin.Context) {
 
 	user.Password = hashedPassword
 
-	if err := repository.CreateUser(&user); err != nil {
+	if err := h.storage.CreateUser(&user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось создать пользователя"})
 		return
 	}
@@ -34,8 +33,8 @@ func CreateUserHandler(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "User registered successfully"})
 }
 
-func Login(c *gin.Context) {
-	var loginRequest models.LoginRequest
+func (h *AuthHandler) Login(c *gin.Context) {
+	var loginRequest storages.LoginRequest
 
 	if err := c.ShouldBindJSON(&loginRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input data", "details": err.Error()})
@@ -43,7 +42,7 @@ func Login(c *gin.Context) {
 	}
 
 	// Поиск пользователя в базе данных по email
-	user, err := repository.GetUserByUsername(loginRequest.Username)
+	user, err := h.storage.GetUserByUsername(loginRequest.Username)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 		return

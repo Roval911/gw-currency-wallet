@@ -438,3 +438,8 @@ GOOS=linux GOARCH=amd64 go build -o main ./cmd
 и в **postman** или c помощью **curl** проверить как работает API.
 Также желатьльно написать README для каждого сервиса
 # gw-currency-wallet
+
+
+{
+"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MzUyNDQxMzgsImlhdCI6MTczNTE1NzczOCwidXNlcl9pZCI6MSwidXNlcm5hbWUiOiJzbGF2YSJ9.cHp60Y1FOw50tAo4qpY5hA-d83-DmPHBEXTM9mceSsw"
+}

@@ -2,13 +2,12 @@ package hanlers
 
 import (
 	"github.com/gin-gonic/gin"
-	"gw-currency-wallet/internal/repository"
 	"net/http"
 )
 
-func CreateWalletHandle(c *gin.Context) {
+func (h *AuthHandler) CreateWalletHandle(c *gin.Context) {
 	userID := c.GetUint("user_id")
-	if err := repository.CreateWallet(userID); err != nil {
+	if err := h.storage.CreateWallet(userID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось создать кошелек"})
 		return
 	}
