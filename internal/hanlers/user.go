@@ -11,7 +11,6 @@ import (
 func (h *AuthHandler) CreateUserHandler(c *gin.Context) {
 	var user storages.User
 
-	// Чтение JSON из тела запроса
 	if err := c.ShouldBindJSON(&user); err != nil {
 		h.logger.Printf("Неверные данные ввода при создании пользователя: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input data", "details": err.Error()})
@@ -71,6 +70,4 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		"token": token,
 	})
 
-	// Генерация ответа при успешной авторизации
-	//c.JSON(http.StatusOK, gin.H{"message": "Login successful", "user_id": user.ID})
 }

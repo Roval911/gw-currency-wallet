@@ -10,6 +10,9 @@ type AuthHandler struct {
 	logger  *logrus.Logger
 }
 
-func NewAuthHandler(storage storages.Storages) *AuthHandler {
-	return &AuthHandler{storage: storage}
+func NewAuthHandler(storage storages.Storages, logger *logrus.Logger) *AuthHandler {
+	return &AuthHandler{
+		storage: storage,
+		logger:  logger,
+	}
 }

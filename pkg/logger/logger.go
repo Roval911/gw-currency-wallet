@@ -2,16 +2,11 @@ package logger
 
 import (
 	"github.com/sirupsen/logrus"
+	"os"
 )
 
-// Создание логгера для настройки уровней логирования на основе переменных окружения
 func InitLogger() *logrus.Logger {
 	logger := logrus.New()
-
-	//err := godotenv.Load()
-	//if err != nil {
-	//	logger.Warn("Error loading .env file, using default configuration")
-	//}
 
 	logLevel := "debug"
 	switch logLevel {
@@ -35,6 +30,13 @@ func InitLogger() *logrus.Logger {
 			FullTimestamp: true,
 		})
 	}
+
+	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	logger.SetOutput(file)
 
 	return logger
 }
