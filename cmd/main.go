@@ -1,12 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"gw-currency-wallet/internal/config"
 	"gw-currency-wallet/internal/hanlers"
 	"gw-currency-wallet/internal/routes"
 	"gw-currency-wallet/internal/storages"
 	"log"
-	"os"
 )
 
 func main() {
@@ -44,10 +44,11 @@ func main() {
 
 	router := routes.SetupRouter(authHandler)
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080" // Дефолтный порт
-	}
+	port := cfg.Server.Port
+	log.Printf("Запуск сервера на порту: %d", port)
 
-	router.Run(port)
+	err = router.Run(fmt.Sprintf(":%d", port))
+	if err != nil {
+		log.Fatalf("Ошибка запуска сервера: %v", err)
+	}
 }

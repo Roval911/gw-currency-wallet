@@ -6,16 +6,12 @@ import (
 	"log"
 )
 
-const (
-	CONFIG_DIR  = "configs"
-	CONFIG_FILE = "main"
-)
-
 type Config struct {
 	DB Postgres
 
 	Server struct {
-		Port int `envconfig:"SERVER_PORT" default:"8080"`
+		Port      int    `envconfig:"SERVER_PORT" default:"8080"`
+		JWTSecret string `envconfig:"JWT_SECRET" required:"true"`
 	}
 }
 
