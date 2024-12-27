@@ -25,14 +25,12 @@ type Postgres struct {
 }
 
 func New() (*Config, error) {
-	// Загружаем переменные из config.env (если файл существует)
 	if err := godotenv.Load(); err != nil {
 		log.Println("No config.env file found, using system environment variables")
 	}
 
 	cfg := new(Config)
 
-	// Заполняем структуру из переменных окружения
 	if err := envconfig.Process("", cfg); err != nil {
 		return nil, err
 	}

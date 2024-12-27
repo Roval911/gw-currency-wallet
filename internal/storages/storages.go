@@ -7,4 +7,7 @@ type Storages interface {
 
 	//	wallet
 	CreateWallet(userid uint) error
+	GetBalance(userID uint) (Wallet, error)
+	Deposit(userID uint, amount float64, currency string) (Wallet, error)
+	Withdraw(userID uint, amount float64, currency string) (Wallet, error)
 }

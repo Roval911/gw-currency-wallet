@@ -11,15 +11,19 @@ func SetupRouter(authHandler *hanlers.AuthHandler) *gin.Engine {
 	router := gin.Default()
 	router.Use(cors.Default())
 
-	// Публичные маршруты
-	router.POST("/api/v1/register", authHandler.CreateUserHandler)
-	router.POST("/api/v1/login", authHandler.Login)
+	public := router.Group("/api/v1")
+	{
+		public.POST("/register", authHandler.CreateUserHandler)
+		public.POST("/login", authHandler.Login)
+	}
 
-	// Защищенные маршруты
 	protected := router.Group("/api/v1")
 	protected.Use(middleware.AuthMiddleware())
 	{
 		protected.POST("/createwallet", authHandler.CreateWalletHandle)
+		protected.GET("/balance", authHandler.GetBalanceHandle)
+		protected.POST("/wallet/deposit", authHandler.DepositHandle)
+		protected.POST("/wallet/withdraw", authHandler.WithdrawHandle)
 	}
 
 	return router
