@@ -5,7 +5,7 @@ import (
 	"gw-currency-wallet/internal/config"
 	"gw-currency-wallet/internal/hanlers"
 	"gw-currency-wallet/internal/routes"
-	"gw-currency-wallet/internal/storages"
+	"gw-currency-wallet/internal/storages/postgres"
 	"log"
 )
 
@@ -17,7 +17,7 @@ func main() {
 
 	log.Printf("Загрузка конфигураций: %+v", cfg)
 
-	db, err := storages.NewPostgresConnection(storages.ConnectionInfo{
+	db, err := postgres.NewPostgresConnection(postgres.ConnectionInfo{
 		Host:     cfg.DB.Host,
 		Port:     cfg.DB.Port,
 		Username: cfg.DB.Username,
@@ -30,11 +30,11 @@ func main() {
 	}
 	defer db.Close()
 
-	storages.SetDB(db)
+	postgres.SetDB(db)
 
-	storages.RunMigrations()
+	postgres.RunMigrations()
 
-	storage := storages.NewPostgresStorage(db)
+	storage := postgres.NewPostgresStorage(db)
 
 	authHandler := hanlers.NewAuthHandler(storage)
 
