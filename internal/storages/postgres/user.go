@@ -4,14 +4,13 @@ import (
 	"database/sql"
 	_ "github.com/lib/pq"
 	"gw-currency-wallet/internal/storages"
-	"log"
 )
 
 func (s *PostgresStorage) CreateUser(user *storages.User) error {
 	query := `INSERT INTO users (username, email, password) VALUES ($1, $2, $3)`
 	_, err := db.Exec(query, user.Username, user.Email, user.Password)
 	if err != nil {
-		log.Printf("Ошибка при добавлении пользователя: %v", err)
+		s.logger.Printf("Ошибка при добавлении пользователя: %v", err)
 		return err
 	}
 	return nil
@@ -24,7 +23,7 @@ func (s *PostgresStorage) GetUserByUsername(email string) (*storages.User, error
 	if err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
-		log.Printf("Ошибка при получении пользователя: %v", err)
+		s.logger.Printf("Ошибка при получении пользователя: %v", err)
 		return nil, err
 	}
 	return user, err

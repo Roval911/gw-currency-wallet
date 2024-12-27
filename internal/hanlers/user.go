@@ -13,12 +13,14 @@ func (h *AuthHandler) CreateUserHandler(c *gin.Context) {
 
 	// Чтение JSON из тела запроса
 	if err := c.ShouldBindJSON(&user); err != nil {
+		h.logger.Printf("Неверные данные ввода при создании пользователя: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input data", "details": err.Error()})
 		return
 	}
 
 	hashedPassword, err := hash.HashPassword(user.Password)
 	if err != nil {
+		h.logger.Printf("Не удалось захешировать пароль для пользователя %s: %v", user.Username, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
 		return
 	}
@@ -26,6 +28,7 @@ func (h *AuthHandler) CreateUserHandler(c *gin.Context) {
 	user.Password = hashedPassword
 
 	if err := h.storage.CreateUser(&user); err != nil {
+		h.logger.Printf("Не удалось создать пользователя %s: %v", user.Username, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось создать пользователя"})
 		return
 	}
@@ -37,6 +40,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	var loginRequest storages.LoginRequest
 
 	if err := c.ShouldBindJSON(&loginRequest); err != nil {
+		h.logger.Printf("Неверные данные ввода при попытке входа: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input data", "details": err.Error()})
 		return
 	}
@@ -44,18 +48,21 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	// Поиск пользователя в базе данных по email
 	user, err := h.storage.GetUserByUsername(loginRequest.Username)
 	if err != nil {
+		h.logger.Printf("Неудачная попытка входа: неверное имя пользователя %s или пароль", loginRequest.Username)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 		return
 	}
 
 	// Проверка пароля
 	if !hash.CheckPassword(loginRequest.Password, user.Password) {
+		h.logger.Printf("Неудачная попытка входа для пользователя %s: неверный пароль", loginRequest.Username)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 		return
 	}
 
 	token, err := middleware.GenerateJWT(user.ID, user.Username)
 	if err != nil {
+		h.logger.Printf("Не удалось сгенерировать токен для пользователя %s: %v", user.Username, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}

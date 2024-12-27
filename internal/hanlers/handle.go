@@ -1,9 +1,13 @@
 package hanlers
 
-import "gw-currency-wallet/internal/storages"
+import (
+	"github.com/sirupsen/logrus"
+	"gw-currency-wallet/internal/storages"
+)
 
 type AuthHandler struct {
 	storage storages.Storages
+	logger  *logrus.Logger
 }
 
 func NewAuthHandler(storage storages.Storages) *AuthHandler {

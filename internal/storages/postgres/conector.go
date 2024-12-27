@@ -7,6 +7,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
+	"github.com/sirupsen/logrus"
 	"log"
 )
 
@@ -22,7 +23,8 @@ type ConnectionInfo struct {
 }
 
 type PostgresStorage struct {
-	db *sql.DB
+	db     *sql.DB
+	logger *logrus.Logger
 }
 
 func NewPostgresStorage(db *sql.DB) *PostgresStorage {

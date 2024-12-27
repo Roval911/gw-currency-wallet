@@ -6,16 +6,18 @@ import (
 	"gw-currency-wallet/internal/hanlers"
 	"gw-currency-wallet/internal/routes"
 	"gw-currency-wallet/internal/storages/postgres"
+	"gw-currency-wallet/pkg/logger"
 	"log"
 )
 
 func main() {
+	logger := logger.InitLogger()
 	cfg, err := config.New()
 	if err != nil {
-		log.Fatalf("Ошибка загрузки конфигурации: %v", err)
+		logger.Fatalf("Ошибка загрузки конфигурации: %v", err)
 	}
 
-	log.Printf("Загрузка конфигураций: %+v", cfg)
+	logger.Printf("Загрузка конфигураций: %+v", cfg)
 
 	db, err := postgres.NewPostgresConnection(postgres.ConnectionInfo{
 		Host:     cfg.DB.Host,
@@ -26,7 +28,7 @@ func main() {
 		Password: cfg.DB.Password,
 	})
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 	defer db.Close()
 
@@ -45,6 +47,6 @@ func main() {
 
 	err = router.Run(fmt.Sprintf(":%d", port))
 	if err != nil {
-		log.Fatalf("Ошибка запуска сервера: %v", err)
+		logger.Fatalf("Ошибка запуска сервера: %v", err)
 	}
 }
