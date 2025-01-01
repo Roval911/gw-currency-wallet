@@ -3,6 +3,7 @@ package postgres
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"gw-currency-wallet/internal/storages"
 )
 
@@ -85,4 +86,113 @@ func (s *PostgresStorage) Withdraw(userID uint, amount float64, currency string)
 		return storages.Wallet{}, err
 	}
 	return wallet, nil
+}
+
+func (s *PostgresStorage) Exchange(userID uint, fromCurrency, toCurrency string, amount, rate float32) (map[string]float32, error) {
+	// Начало транзакции
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("failed to start transaction: %w", err)
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Проверяем текущий баланс
+	var currentBalance float32
+	query := `SELECT 
+                  CASE 
+                    WHEN $2 = 'USD' THEN USD 
+                    WHEN $2 = 'RUB' THEN RUB 
+                    WHEN $2 = 'EUR' THEN EUR 
+                  END as balance 
+              FROM wallets WHERE user_id = $1`
+	err = tx.QueryRow(query, userID, fromCurrency).Scan(&currentBalance)
+	if err == sql.ErrNoRows {
+		tx.Rollback()
+		return nil, errors.New("source currency not found")
+	} else if err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to fetch balance: %w", err)
+	}
+
+	if currentBalance < amount {
+		tx.Rollback()
+		return nil, errors.New("insufficient funds")
+	}
+
+	// Обновляем баланс источника (списываем)
+	var updateSourceQuery string
+	switch fromCurrency {
+	case "USD":
+		updateSourceQuery = `UPDATE wallets SET USD = USD - $1 WHERE user_id = $2`
+	case "RUB":
+		updateSourceQuery = `UPDATE wallets SET RUB = RUB - $1 WHERE user_id = $2`
+	case "EUR":
+		updateSourceQuery = `UPDATE wallets SET EUR = EUR - $1 WHERE user_id = $2`
+	default:
+		tx.Rollback()
+		return nil, fmt.Errorf("unsupported currency: %s", fromCurrency)
+	}
+
+	_, err = tx.Exec(updateSourceQuery, amount, userID)
+	if err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to update source balance: %w", err)
+	}
+
+	// Рассчитываем сумму для добавления в целевую валюту
+	exchangedAmount := amount * rate
+
+	// Обновляем баланс целевой валюты
+	var updateTargetQuery string
+	switch toCurrency {
+	case "USD":
+		updateTargetQuery = `UPDATE wallets SET USD = USD + $1 WHERE user_id = $2`
+	case "RUB":
+		updateTargetQuery = `UPDATE wallets SET RUB = RUB + $1 WHERE user_id = $2`
+	case "EUR":
+		updateTargetQuery = `UPDATE wallets SET EUR = EUR + $1 WHERE user_id = $2`
+	default:
+		tx.Rollback()
+		return nil, fmt.Errorf("unsupported currency: %s", toCurrency)
+	}
+
+	_, err = tx.Exec(updateTargetQuery, exchangedAmount, userID)
+	if err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to update target balance: %w", err)
+	}
+
+	// Завершаем транзакцию
+	if err := tx.Commit(); err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	// Возвращаем новый баланс пользователя
+	balances := make(map[string]float32)
+	rows, err := s.db.Query(`SELECT 'USD' as currency, USD as balance FROM wallets WHERE user_id = $1
+	                          UNION ALL
+	                          SELECT 'RUB', RUB FROM wallets WHERE user_id = $1
+	                          UNION ALL
+	                          SELECT 'EUR', EUR FROM wallets WHERE user_id = $1`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch updated balances: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var currency string
+		var balance float32
+		if err := rows.Scan(&currency, &balance); err != nil {
+			return nil, fmt.Errorf("failed to scan balances: %w", err)
+		}
+		balances[currency] = balance
+	}
+
+	return balances, nil
 }

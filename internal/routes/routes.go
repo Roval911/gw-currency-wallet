@@ -7,7 +7,7 @@ import (
 	"gw-currency-wallet/internal/middleware"
 )
 
-func SetupRouter(authHandler *hanlers.AuthHandler) *gin.Engine {
+func SetupRouter(authHandler *hanlers.AuthHandler, exchangeHandler *hanlers.ExchangeHandler) *gin.Engine {
 	router := gin.Default()
 	router.Use(cors.Default())
 
@@ -24,6 +24,8 @@ func SetupRouter(authHandler *hanlers.AuthHandler) *gin.Engine {
 		protected.GET("/balance", authHandler.GetBalanceHandle)
 		protected.POST("/wallet/deposit", authHandler.DepositHandle)
 		protected.POST("/wallet/withdraw", authHandler.WithdrawHandle)
+		protected.GET("/exchange/rates", exchangeHandler.GetExchangeRatesHandle)
+		protected.POST("/exchange", exchangeHandler.ExchangeHandle)
 	}
 
 	return router

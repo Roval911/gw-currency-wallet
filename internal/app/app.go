@@ -3,7 +3,9 @@ package app
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/roval911/proto-exchange/exchange"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 	"gw-currency-wallet/internal/config"
 	"gw-currency-wallet/internal/hanlers"
 	"gw-currency-wallet/internal/routes"
@@ -50,11 +52,19 @@ func New() (*App, error) {
 	// Создание хранилища
 	storage := postgres.NewPostgresStorage(db)
 
-	// Создание обработчиков с логгером
+	conn, err := grpc.Dial(cfg.ExchangeService.Address, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("Ошибка подключения к gRPC-сервису: %v", err)
+		return nil, err
+	}
+	exchangeService := exchange_grpc.NewExchangeServiceClient(conn)
+
+	// Создание обработчиков
 	authHandler := hanlers.NewAuthHandler(storage, log)
+	exchangeHandler := hanlers.NewExchangeHandler(storage, log, exchangeService)
 
 	// Настройка маршрутов
-	router := routes.SetupRouter(authHandler)
+	router := routes.SetupRouter(authHandler, exchangeHandler)
 
 	// Возвращаем структуру приложения с логгером и маршрутизатором
 	return &App{

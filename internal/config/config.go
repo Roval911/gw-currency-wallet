@@ -13,6 +13,9 @@ type Config struct {
 		Port      int    `envconfig:"SERVER_PORT" default:"8080"`
 		JWTSecret string `envconfig:"JWT_SECRET" required:"true"`
 	}
+	ExchangeService struct {
+		Address string `envconfig:"EXCHANGE_SERVICE_ADDRESS" required:"true"`
+	}
 }
 
 type Postgres struct {
@@ -25,7 +28,7 @@ type Postgres struct {
 }
 
 func New() (*Config, error) {
-	if err := godotenv.Load(); err != nil {
+	if err := godotenv.Load("config.env"); err != nil {
 		log.Println("No config.env file found, using system environment variables")
 	}
 
