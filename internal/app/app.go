@@ -1,8 +1,10 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/roval911/proto-exchange/exchange"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -15,8 +17,9 @@ import (
 
 // App структура для представления всего приложения
 type App struct {
-	logger *logrus.Logger
-	router *gin.Engine
+	logger      *logrus.Logger
+	router      *gin.Engine
+	redisClient *redis.Client
 }
 
 // New создаёт новый экземпляр приложения
@@ -59,9 +62,21 @@ func New() (*App, error) {
 	}
 	exchangeService := exchange_grpc.NewExchangeServiceClient(conn)
 
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     cfg.Redis.Address,  // Адрес Redis-сервера
+		Password: cfg.Redis.Password, // Пароль Redis (если есть)
+		DB:       cfg.Redis.DB,       // Номер базы данных
+	})
+	// Проверяем подключение к Redis
+	_, err = redisClient.Ping(context.Background()).Result()
+	if err != nil {
+		log.Fatalf("Ошибка подключения к Redis: %v", err)
+		return nil, err
+	}
+
 	// Создание обработчиков
 	authHandler := hanlers.NewAuthHandler(storage, log)
-	exchangeHandler := hanlers.NewExchangeHandler(storage, log, exchangeService)
+	exchangeHandler := hanlers.NewExchangeHandler(storage, log, exchangeService, redisClient)
 
 	// Настройка маршрутов
 	router := routes.SetupRouter(authHandler, exchangeHandler)

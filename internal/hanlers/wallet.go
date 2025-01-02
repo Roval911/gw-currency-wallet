@@ -2,9 +2,10 @@ package hanlers
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/roval911/proto-exchange/exchange"
-	"gw-currency-wallet/internal/storages" // Импортируем новый пакет storages
+	"gw-currency-wallet/internal/storages"
 	"net/http"
 	"time"
 )
@@ -120,7 +121,7 @@ func (h *AuthHandler) WithdrawHandle(c *gin.Context) {
 
 // GetExchangeRatesHandle godoc
 // @Summary Get exchange rates
-// @Description Retrieves current exchange rates for supported currencies from the exchange service
+// @Description Retrieves current exchange rates for supported currencies from the exchange service or cache
 // @Tags Exchange
 // @Produce json
 // @Success 200 {object} map[string]interface{} "Exchange rates retrieved"
@@ -128,6 +129,20 @@ func (h *AuthHandler) WithdrawHandle(c *gin.Context) {
 // @Security BearerToken
 // @Router /api/v1/exchange/rates [get]
 func (h *ExchangeHandler) GetExchangeRatesHandle(c *gin.Context) {
+	// Проверка кеша Redis
+	cacheKey := "exchange_rates"
+	rateCache, err := h.redisClient.Get(context.Background(), cacheKey).Result()
+
+	if err == nil {
+		// Если кэширование успешно (данные найдены в Redis)
+		var rates map[string]float64
+		if err := json.Unmarshal([]byte(rateCache), &rates); err == nil {
+			c.JSON(http.StatusOK, gin.H{"rates": rates})
+			return
+		}
+	}
+
+	// Если нет в кеше или произошла ошибка, запрашиваем у внешнего сервиса
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
@@ -136,6 +151,18 @@ func (h *ExchangeHandler) GetExchangeRatesHandle(c *gin.Context) {
 		h.logger.Printf("Не удалось получить курсы валют: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve exchange rates"})
 		return
+	}
+
+	// Кэшируем данные в Redis
+	rateData, err := json.Marshal(resp.Rates)
+	if err != nil {
+		h.logger.Printf("Не удалось сериализовать курсы валют для кеша: %v", err)
+	}
+
+	// Сохраняем в Redis с временем жизни 10 минут
+	err = h.redisClient.Set(context.Background(), cacheKey, rateData, time.Minute*10).Err()
+	if err != nil {
+		h.logger.Printf("Не удалось сохранить курсы валют в Redis: %v", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"rates": resp.Rates})
@@ -168,22 +195,52 @@ func (h *ExchangeHandler) ExchangeHandle(c *gin.Context) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
+	// Проверка кеша Redis для обменного курса
+	cacheKey := "exchange_rate_" + req.FromCurrency + "_" + req.ToCurrency
+	rateCache, err := h.redisClient.Get(context.Background(), cacheKey).Result()
 
-	resp, err := h.exchangeService.GetExchangeRateForCurrency(ctx, &exchange_grpc.CurrencyRequest{
-		FromCurrency: req.FromCurrency,
-		ToCurrency:   req.ToCurrency,
-	})
-	if err != nil {
-		h.logger.Printf("Не удалось получить курс валют: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve exchange rate"})
-		return
+	var rate float32 // Заменили на float32, чтобы соответствовать типу в структуре
+
+	if err == nil {
+		// Если кэширование успешно
+		if err := json.Unmarshal([]byte(rateCache), &rate); err == nil {
+			// Применяем курс из кеша
+		}
+	} else {
+		// Если курса нет в кэше, делаем запрос к внешнему сервису
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+
+		resp, err := h.exchangeService.GetExchangeRateForCurrency(ctx, &exchange_grpc.CurrencyRequest{
+			FromCurrency: req.FromCurrency,
+			ToCurrency:   req.ToCurrency,
+		})
+		if err != nil {
+			h.logger.Printf("Не удалось получить курс валют: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve exchange rate"})
+			return
+		}
+
+		rate = float32(resp.Rate) // Приводим к float32, так как структура ожидает float32
+
+		// Кэшируем курс в Redis
+		rateData, err := json.Marshal(rate)
+		if err != nil {
+			h.logger.Printf("Не удалось сериализовать курс валют для кеша: %v", err)
+		}
+
+		// Сохраняем курс в Redis с временем жизни 10 минут
+		err = h.redisClient.Set(context.Background(), cacheKey, rateData, time.Minute*10).Err()
+		if err != nil {
+			h.logger.Printf("Не удалось сохранить курс валют в Redis: %v", err)
+		}
 	}
 
-	rate := resp.Rate
+	// Производим обмен валют
 	userID := c.GetUint("user_id")
-	wallet, err := h.storage.Exchange(userID, req.FromCurrency, req.ToCurrency, req.Amount, rate)
+	exchangedAmount := float32(req.Amount) * rate // Приводим к float32
+
+	wallet, err := h.storage.Exchange(userID, req.FromCurrency, req.ToCurrency, exchangedAmount, rate)
 	if err != nil {
 		h.logger.Printf("Ошибка обмена валют: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -192,7 +249,7 @@ func (h *ExchangeHandler) ExchangeHandle(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":          "Exchange successful",
-		"exchanged_amount": req.Amount * rate,
+		"exchanged_amount": exchangedAmount,
 		"new_balance":      wallet,
 	})
 }

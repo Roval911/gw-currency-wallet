@@ -16,6 +16,11 @@ type Config struct {
 	ExchangeService struct {
 		Address string `envconfig:"EXCHANGE_SERVICE_ADDRESS" required:"true"`
 	}
+	Redis struct {
+		Address  string `envconfig:"REDIS_ADDRESS" required:"true"`
+		Password string `envconfig:"REDIS_PASSWORD" default:""`
+		DB       int    `envconfig:"REDIS_DB" default:"0"`
+	}
 }
 
 type Postgres struct {

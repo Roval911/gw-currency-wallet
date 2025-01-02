@@ -11,6 +11,7 @@ import (
 )
 
 func SetupRouter(authHandler *hanlers.AuthHandler, exchangeHandler *hanlers.ExchangeHandler) *gin.Engine {
+
 	router := gin.Default()
 	router.Use(cors.Default())
 
