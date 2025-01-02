@@ -4,12 +4,20 @@ import (
 	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/roval911/proto-exchange/exchange"
-	"github.com/sirupsen/logrus"
-	"gw-currency-wallet/internal/storages"
+	"gw-currency-wallet/internal/storages" // Импортируем новый пакет storages
 	"net/http"
 	"time"
 )
 
+// CreateWalletHandle godoc
+// @Summary Create a new wallet
+// @Description Creates a wallet for the authenticated user
+// @Tags Wallet
+// @Produce json
+// @Success 201 {object} map[string]interface{} "Wallet registered successfully"
+// @Failure 500 {object} map[string]interface{} "Failed to create wallet"
+// @Security BearerToken
+// @Router /api/v1/createwallet [post]
 func (h *AuthHandler) CreateWalletHandle(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	if err := h.storage.CreateWallet(userID); err != nil {
@@ -20,6 +28,15 @@ func (h *AuthHandler) CreateWalletHandle(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Wallet registered successfully"})
 }
 
+// GetBalanceHandle godoc
+// @Summary Get wallet balance
+// @Description Retrieves the balance of the authenticated user's wallet
+// @Tags Wallet
+// @Produce json
+// @Success 200 {object} storages.Wallet "Balance retrieved"
+// @Failure 500 {object} map[string]interface{} "Failed to fetch balance"
+// @Security BearerToken
+// @Router /api/v1/balance [get]
 func (h *AuthHandler) GetBalanceHandle(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	wallet, err := h.storage.GetBalance(userID)
@@ -31,6 +48,18 @@ func (h *AuthHandler) GetBalanceHandle(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"balance": wallet})
 }
 
+// DepositHandle godoc
+// @Summary Deposit funds to wallet
+// @Description Adds funds to the authenticated user's wallet
+// @Tags Wallet
+// @Accept  json
+// @Produce  json
+// @Param depositRequest body storages.DepositRequest true "Deposit details"
+// @Success 200 {object} map[string]interface{} "Account topped up successfully"
+// @Failure 400 {object} map[string]interface{} "Invalid request"
+// @Failure 500 {object} map[string]interface{} "Failed to deposit funds"
+// @Security BearerToken
+// @Router /api/v1/wallet/deposit [post]
 func (h *AuthHandler) DepositHandle(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	var req storages.DepositRequest
@@ -54,6 +83,18 @@ func (h *AuthHandler) DepositHandle(c *gin.Context) {
 	})
 }
 
+// WithdrawHandle godoc
+// @Summary Withdraw funds from wallet
+// @Description Withdraws funds from the authenticated user's wallet
+// @Tags Wallet
+// @Accept  json
+// @Produce  json
+// @Param withdrawRequest body storages.WithdrawRequest true "Withdrawal details"
+// @Success 200 {object} map[string]interface{} "Withdrawal successful"
+// @Failure 400 {object} map[string]interface{} "Invalid request"
+// @Failure 500 {object} map[string]interface{} "Failed to withdraw funds"
+// @Security BearerToken
+// @Router /api/v1/wallet/withdraw [post]
 func (h *AuthHandler) WithdrawHandle(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	var req storages.WithdrawRequest
@@ -77,22 +118,15 @@ func (h *AuthHandler) WithdrawHandle(c *gin.Context) {
 	})
 }
 
-type ExchangeHandler struct {
-	storage         storages.Storages
-	logger          *logrus.Logger
-	exchangeService exchange_grpc.ExchangeServiceClient
-}
-
-// NewExchangeHandler создает новый обработчик для обмена валют
-func NewExchangeHandler(storage storages.Storages, logger *logrus.Logger, exchangeService exchange_grpc.ExchangeServiceClient) *ExchangeHandler {
-	return &ExchangeHandler{
-		storage:         storage,
-		logger:          logger,
-		exchangeService: exchangeService,
-	}
-}
-
-// GetExchangeRatesHandle обрабатывает запрос на получение курсов валют
+// GetExchangeRatesHandle godoc
+// @Summary Get exchange rates
+// @Description Retrieves current exchange rates for supported currencies from the exchange service
+// @Tags Exchange
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Exchange rates retrieved"
+// @Failure 500 {object} map[string]interface{} "Failed to retrieve exchange rates"
+// @Security BearerToken
+// @Router /api/v1/exchange/rates [get]
 func (h *ExchangeHandler) GetExchangeRatesHandle(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
@@ -107,13 +141,20 @@ func (h *ExchangeHandler) GetExchangeRatesHandle(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"rates": resp.Rates})
 }
 
-// ExchangeHandle обрабатывает запрос на обмен валют
+// ExchangeHandle godoc
+// @Summary Exchange currency
+// @Description Exchanges one currency to another in the authenticated user's wallet
+// @Tags Exchange
+// @Accept  json
+// @Produce  json
+// @Param exchangeRequest body storages.ExchangeRequest true "Exchange details"
+// @Success 200 {object} map[string]interface{} "Exchange successful"
+// @Failure 400 {object} map[string]interface{} "Invalid request"
+// @Failure 500 {object} map[string]interface{} "Failed to process exchange"
+// @Security BearerToken
+// @Router /api/v1/exchange [post]
 func (h *ExchangeHandler) ExchangeHandle(c *gin.Context) {
-	var req struct {
-		FromCurrency string  `json:"from_currency" binding:"required"`
-		ToCurrency   string  `json:"to_currency" binding:"required"`
-		Amount       float32 `json:"amount" binding:"required,gt=0"`
-	}
+	var req storages.ExchangeRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.Printf("Неверный запрос обмена: %v", err)
@@ -121,7 +162,6 @@ func (h *ExchangeHandler) ExchangeHandle(c *gin.Context) {
 		return
 	}
 
-	// Проверяем, что валюты допустимы
 	if !isValidCurrency(req.FromCurrency) || !isValidCurrency(req.ToCurrency) {
 		h.logger.Printf("Неверная валюта: %s или %s", req.FromCurrency, req.ToCurrency)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid currency"})
@@ -131,7 +171,6 @@ func (h *ExchangeHandler) ExchangeHandle(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	// Получаем курс обмена через gRPC
 	resp, err := h.exchangeService.GetExchangeRateForCurrency(ctx, &exchange_grpc.CurrencyRequest{
 		FromCurrency: req.FromCurrency,
 		ToCurrency:   req.ToCurrency,
@@ -142,7 +181,6 @@ func (h *ExchangeHandler) ExchangeHandle(c *gin.Context) {
 		return
 	}
 
-	// Проверяем баланс и обновляем его
 	rate := resp.Rate
 	userID := c.GetUint("user_id")
 	wallet, err := h.storage.Exchange(userID, req.FromCurrency, req.ToCurrency, req.Amount, rate)

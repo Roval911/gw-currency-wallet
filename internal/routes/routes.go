@@ -3,6 +3,9 @@ package routes
 import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	_ "gw-currency-wallet/docs"
 	"gw-currency-wallet/internal/hanlers"
 	"gw-currency-wallet/internal/middleware"
 )
@@ -10,6 +13,8 @@ import (
 func SetupRouter(authHandler *hanlers.AuthHandler, exchangeHandler *hanlers.ExchangeHandler) *gin.Engine {
 	router := gin.Default()
 	router.Use(cors.Default())
+
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	public := router.Group("/api/v1")
 	{

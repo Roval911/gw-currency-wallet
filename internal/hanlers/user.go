@@ -8,6 +8,17 @@ import (
 	"net/http"
 )
 
+// CreateUserHandler godoc
+// @Summary Register a new user
+// @Description Creates a new user with provided credentials
+// @Tags Auth
+// @Accept  json
+// @Produce  json
+// @Param user body storages.User true "User information"
+// @Success 201 {object} map[string]interface{} "User registered successfully"
+// @Failure 400 {object} map[string]interface{} "Invalid input data"
+// @Failure 500 {object} map[string]interface{} "Failed to hash password"
+// @Router /api/v1/register [post]
 func (h *AuthHandler) CreateUserHandler(c *gin.Context) {
 	var user storages.User
 
@@ -35,6 +46,17 @@ func (h *AuthHandler) CreateUserHandler(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "User registered successfully"})
 }
 
+// Login godoc
+// @Summary Log in a user
+// @Description Authenticates user with username and password
+// @Tags Auth
+// @Accept  json
+// @Produce  json
+// @Param loginRequest body storages.LoginRequest true "Login credentials"
+// @Success 200 {object} map[string]interface{} "Token returned"
+// @Failure 400 {object} map[string]interface{} "Invalid input data"
+// @Failure 401 {object} map[string]interface{} "Invalid username or password"
+// @Router /api/v1/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var loginRequest storages.LoginRequest
 

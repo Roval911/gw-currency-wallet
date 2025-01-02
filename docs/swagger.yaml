@@ -1,0 +1,325 @@
+basePath: /api/v1
+definitions:
+  storages.DepositRequest:
+    properties:
+      amount:
+        type: number
+      currency:
+        enum:
+        - USD
+        - RUB
+        - EUR
+        type: string
+    required:
+    - amount
+    - currency
+    type: object
+  storages.ExchangeRequest:
+    properties:
+      amount:
+        type: number
+      from_currency:
+        type: string
+      to_currency:
+        type: string
+    required:
+    - amount
+    - from_currency
+    - to_currency
+    type: object
+  storages.LoginRequest:
+    properties:
+      password:
+        example: password123
+        type: string
+      username:
+        example: user123
+        type: string
+    type: object
+  storages.User:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      username:
+        minLength: 2
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  storages.Wallet:
+    properties:
+      EUR:
+        type: number
+      RUB:
+        type: number
+      USD:
+        type: number
+      user_id:
+        type: integer
+    type: object
+  storages.WithdrawRequest:
+    properties:
+      amount:
+        type: number
+      currency:
+        enum:
+        - USD
+        - RUB
+        - EUR
+        type: string
+    required:
+    - amount
+    - currency
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@currencywallet.com
+    name: API Support
+  description: API for managing wallets and currency exchanges.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  title: Currency Wallet API
+  version: "1.0"
+paths:
+  /api/v1/balance:
+    get:
+      description: Retrieves the balance of the authenticated user's wallet
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Balance retrieved
+          schema:
+            $ref: '#/definitions/storages.Wallet'
+        "500":
+          description: Failed to fetch balance
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerToken: []
+      summary: Get wallet balance
+      tags:
+      - Wallet
+  /api/v1/createwallet:
+    post:
+      description: Creates a wallet for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Wallet registered successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to create wallet
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerToken: []
+      summary: Create a new wallet
+      tags:
+      - Wallet
+  /api/v1/exchange:
+    post:
+      consumes:
+      - application/json
+      description: Exchanges one currency to another in the authenticated user's wallet
+      parameters:
+      - description: Exchange details
+        in: body
+        name: exchangeRequest
+        required: true
+        schema:
+          $ref: '#/definitions/storages.ExchangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Exchange successful
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to process exchange
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerToken: []
+      summary: Exchange currency
+      tags:
+      - Exchange
+  /api/v1/exchange/rates:
+    get:
+      description: Retrieves current exchange rates for supported currencies from
+        the exchange service
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Exchange rates retrieved
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to retrieve exchange rates
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerToken: []
+      summary: Get exchange rates
+      tags:
+      - Exchange
+  /api/v1/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates user with username and password
+      parameters:
+      - description: Login credentials
+        in: body
+        name: loginRequest
+        required: true
+        schema:
+          $ref: '#/definitions/storages.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token returned
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid input data
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Invalid username or password
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Log in a user
+      tags:
+      - Auth
+  /api/v1/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user with provided credentials
+      parameters:
+      - description: User information
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/storages.User'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User registered successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid input data
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to hash password
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Register a new user
+      tags:
+      - Auth
+  /api/v1/wallet/deposit:
+    post:
+      consumes:
+      - application/json
+      description: Adds funds to the authenticated user's wallet
+      parameters:
+      - description: Deposit details
+        in: body
+        name: depositRequest
+        required: true
+        schema:
+          $ref: '#/definitions/storages.DepositRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Account topped up successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to deposit funds
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerToken: []
+      summary: Deposit funds to wallet
+      tags:
+      - Wallet
+  /api/v1/wallet/withdraw:
+    post:
+      consumes:
+      - application/json
+      description: Withdraws funds from the authenticated user's wallet
+      parameters:
+      - description: Withdrawal details
+        in: body
+        name: withdrawRequest
+        required: true
+        schema:
+          $ref: '#/definitions/storages.WithdrawRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Withdrawal successful
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to withdraw funds
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerToken: []
+      summary: Withdraw funds from wallet
+      tags:
+      - Wallet
+swagger: "2.0"
